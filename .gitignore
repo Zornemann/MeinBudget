@@ -9,6 +9,9 @@
 .history
 .svn/
 migrate_working_dir/
+*.tmp
+*.temp
+*~
 
 # IntelliJ related
 *.iml
@@ -40,12 +43,10 @@ app.*.symbols
 app.*.map.json
 
 # Android Studio
-*.iml
 .gradle
 /local.properties
 /.idea/workspace.xml
 /.idea/libraries
-.DS_Store
 /build
 /captures
 .externalNativeBuild
@@ -92,10 +93,40 @@ local.properties
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
+# React Native / Android App
+MeinBudgetAndroid/node_modules/
+MeinBudgetAndroid/.gradle/
+MeinBudgetAndroid/build/
+MeinBudgetAndroid/android/build/
+MeinBudgetAndroid/android/.gradle/
+MeinBudgetAndroid/android/app/build/
+MeinBudgetAndroid/.bundle/
+MeinBudgetAndroid/vendor/
+MeinBudgetAndroid/ios/Pods/
+MeinBudgetAndroid/ios/build/
+MeinBudgetAndroid/.expo/
+MeinBudgetAndroid/.expo-shared/
+
+# Node / NPM
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Coverage
 coverage/
 
-# Exceptions to above rules.
+# Cache
+.cache/
+
+# Exceptions to above rules
 !**/ios/**/default.mode1v3
 !**/ios/**/default.mode2v3
 !**/ios/**/default.pbxuser
