@@ -49,10 +49,10 @@ class _LoansScreenState extends State<LoansScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _loans.isEmpty
-              ? Center(
+              ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.credit_card, size: 64, color: Colors.grey),
                       SizedBox(height: 16),
                       Text(
@@ -212,6 +212,9 @@ class _LoansScreenState extends State<LoansScreen> {
     final monthlyRateController = TextEditingController();
     final descriptionController = TextEditingController();
     DateTime selectedDate = DateTime.now();
+
+    // Capture the context before the async operation
+    final widgetContext = context;
 
     await showDialog(
       context: context,
@@ -378,7 +381,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 _loadLoans();
                 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(widgetContext).showSnackBar(
                     const SnackBar(content: Text('Kredit hinzugefügt')),
                   );
                 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
-import '../models/transaction.dart';
+import '../models/transaction.dart' as models;
 import '../models/loan.dart';
 import 'transactions_screen.dart';
 import 'loans_screen.dart';
@@ -15,7 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  List<Transaction> _recentTransactions = [];
+  List<models.Transaction> _recentTransactions = [];
   List<Loan> _activeLoans = [];
   double _totalIncome = 0;
   double _totalExpenses = 0;
