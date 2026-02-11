@@ -114,7 +114,7 @@ class _LoansScreenState extends State<LoansScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Beschreibung:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(loan.description!),
                 ],
