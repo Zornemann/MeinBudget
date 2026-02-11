@@ -159,7 +159,11 @@ export async function getSettings(): Promise<AppSettings | undefined> {
   return await db.get('settings', 'app-settings');
 }
 
+interface StoredSettings extends AppSettings {
+  id: string;
+}
+
 export async function updateSettings(settings: AppSettings): Promise<void> {
   const db = await getDB();
-  await db.put('settings', { ...settings, id: 'app-settings' } as any);
+  await db.put('settings', { ...settings, id: 'app-settings' } as StoredSettings);
 }
