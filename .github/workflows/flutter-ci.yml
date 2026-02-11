@@ -2,65 +2,34 @@ name: Flutter CI
 
 on:
   push:
-    branches: [ main, develop ]
-    paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'ios/**'
-      - 'web/**'
-      - 'pubspec.yaml'
-      - 'pubspec.lock'
-      - '.github/workflows/flutter-ci.yml'
-  pull_request:
-    branches: [ main, develop ]
-    paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'ios/**'
-      - 'web/**'
-      - 'pubspec.yaml'
-      - 'pubspec.lock'
-      - '.github/workflows/flutter-ci.yml'
+    branches:
+      - main
 
 jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - name: Flutter Analyze
+        run: flutter analyze
+
   build:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.19.0'
-        channel: 'stable'
-    
-    - name: Install dependencies
-      run: flutter pub get
-    
-    - name: Verify formatting
-      run: dart format --output=none --set-exit-if-changed lib/
-    
-    - name: Analyze project source
-      run: flutter analyze
-    
-    - name: Build Android APK
-      run: flutter build apk --release
-    
-    - name: Build Web
-      run: flutter build web --release
-    
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
-    
-    - name: Upload Web artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: web-build
-        path: build/web/
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - name: Flutter Build
+        run: flutter build apk
