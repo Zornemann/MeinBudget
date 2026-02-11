@@ -112,9 +112,9 @@ class _LoansScreenState extends State<LoansScreen> {
                 ),
                 if (loan.description != null && loan.description!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     'Beschreibung:',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(loan.description!),
                 ],
@@ -307,6 +307,7 @@ class _LoansScreenState extends State<LoansScreen> {
               onPressed: () async {
                 // Validierung
                 if (nameController.text.trim().isEmpty) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Bitte geben Sie einen Namen ein'),
@@ -327,6 +328,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 );
 
                 if (totalAmount == null || totalAmount <= 0) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Bitte geben Sie eine gültige Gesamtsumme ein'),
@@ -336,6 +338,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 }
 
                 if (interestRate == null || interestRate < 0) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Bitte geben Sie einen gültigen Zinsatz ein'),
@@ -345,6 +348,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 }
 
                 if (duration == null || duration <= 0) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Bitte geben Sie eine gültige Laufzeit ein'),
@@ -354,6 +358,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 }
 
                 if (monthlyRate == null || monthlyRate <= 0) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Bitte geben Sie eine gültige monatliche Rate ein'),
@@ -374,6 +379,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 );
 
                 await _dbHelper.insertLoan(loan);
+                if (!mounted) return;
                 Navigator.pop(dialogContext);
                 _loadLoans();
                 
