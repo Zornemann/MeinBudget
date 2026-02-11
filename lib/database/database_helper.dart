@@ -1,4 +1,4 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -151,7 +151,7 @@ class DatabaseHelper {
   Future<List<Transaction>> getTransactions() async {
     final db = await database;
     final result = await db.query('transactions', orderBy: 'date DESC');
-    return result.map((json) => Transaction.fromMap(json)).toList();
+    return result.map<Transaction>((json) => Transaction.fromMap(json)).toList();
   }
 
   Future<void> deleteTransaction(String id) async {
