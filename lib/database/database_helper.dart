@@ -1,24 +1,24 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sqflite;
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import '../models/transaction.dart';
+import '../models/transaction.dart' as models;
 import '../models/loan.dart';
 import '../models/category.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
-  static Database? _database;
+  static sqflite.Database? _database;
 
   DatabaseHelper._init();
 
-  Future<Database> get database async {
+  Future<sqflite.Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('mein_budget.db');
     return _database!;
   }
 
-  Future<Database> _initDB(String filePath) async {
+  Future<sqflite.Database> _initDB(String filePath) async {
     if (kIsWeb) {
       // Für Web: verwende sqflite_common_ffi_web
       final factory = databaseFactoryFfiWeb;
@@ -42,7 +42,7 @@ class DatabaseHelper {
     }
   }
 
-  Future<void> _createDB(Database db, int version) async {
+  Future<void> _createDB(sqflite.Database db, int version) async {
     const idType = 'TEXT PRIMARY KEY';
     const textType = 'TEXT NOT NULL';
     const realType = 'REAL NOT NULL';
@@ -88,7 +88,7 @@ class DatabaseHelper {
     await _insertDefaultCategories(db);
   }
 
-  Future<void> _insertDefaultCategories(Database db) async {
+  Future<void> _insertDefaultCategories(sqflite.Database db) async {
     // Einnahmen-Kategorien
     await db.insert('categories', {
       'id': 'income_gehalt',
@@ -143,15 +143,15 @@ class DatabaseHelper {
   }
 
   // CRUD Operationen für Transaktionen
-  Future<void> insertTransaction(Transaction transaction) async {
+  Future<void> insertTransaction(models.Transaction transaction) async {
     final db = await database;
     await db.insert('transactions', transaction.toMap());
   }
 
-  Future<List<Transaction>> getTransactions() async {
+  Future<List<models.Transaction>> getTransactions() async {
     final db = await database;
     final result = await db.query('transactions', orderBy: 'date DESC');
-    return result.map((json) => Transaction.fromMap(json)).toList();
+    return result.map((json) => models.Transaction.fromMap(json)).toList();
   }
 
   Future<void> deleteTransaction(String id) async {

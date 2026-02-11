@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
-import '../models/transaction.dart';
+import '../models/transaction.dart' as models;
 import '../models/category.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -16,8 +16,8 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     with SingleTickerProviderStateMixin {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   late TabController _tabController;
-  List<Transaction> _incomeTransactions = [];
-  List<Transaction> _expenseTransactions = [];
+  List<models.Transaction> _incomeTransactions = [];
+  List<models.Transaction> _expenseTransactions = [];
   bool _isLoading = true;
 
   @override
@@ -85,7 +85,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     );
   }
 
-  Widget _buildTransactionList(List<Transaction> transactions, String type) {
+  Widget _buildTransactionList(List<models.Transaction> transactions, String type) {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     if (transactions.isEmpty) {
@@ -192,6 +192,9 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     DateTime selectedDate = DateTime.now();
     bool showNewCategoryField = false;
     final newCategoryController = TextEditingController();
+
+    // Capture the context before the async operation
+    final scaffoldMessengerContext = context;
 
     await showDialog(
       context: context,
@@ -328,7 +331,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                   categoryName = selectedCategory ?? '';
                 }
 
-                final transaction = Transaction(
+                final transaction = models.Transaction(
                   id: const Uuid().v4(),
                   type: type,
                   category: categoryName,
@@ -342,7 +345,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                 _loadTransactions();
                 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(scaffoldMessengerContext).showSnackBar(
                     SnackBar(
                       content: Text(
                         type == 'income'
