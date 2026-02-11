@@ -214,7 +214,7 @@ class _LoansScreenState extends State<LoansScreen> {
     DateTime selectedDate = DateTime.now();
 
     // Capture the context before the async operation
-    final scaffoldMessengerContext = context;
+    final widgetContext = context;
 
     await showDialog(
       context: context,
@@ -381,7 +381,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 _loadLoans();
                 
                 if (mounted) {
-                  ScaffoldMessenger.of(scaffoldMessengerContext).showSnackBar(
+                  ScaffoldMessenger.of(widgetContext).showSnackBar(
                     const SnackBar(content: Text('Kredit hinzugefügt')),
                   );
                 }

@@ -194,7 +194,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     final newCategoryController = TextEditingController();
 
     // Capture the context before the async operation
-    final scaffoldMessengerContext = context;
+    final widgetContext = context;
 
     await showDialog(
       context: context,
@@ -345,7 +345,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                 _loadTransactions();
                 
                 if (mounted) {
-                  ScaffoldMessenger.of(scaffoldMessengerContext).showSnackBar(
+                  ScaffoldMessenger.of(widgetContext).showSnackBar(
                     SnackBar(
                       content: Text(
                         type == 'income'
