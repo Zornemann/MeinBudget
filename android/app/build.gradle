@@ -1,6 +1,7 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
+    // Corrected Flutter plugin ID for Embedding v2
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -15,7 +16,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = "1.8"
     }
 
     defaultConfig {
@@ -24,6 +25,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Ensure multi-dex is enabled for large apps
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -35,4 +39,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Required for apps with many methods (like sqflite)
+    implementation 'androidx.multidex:multidex:2.0.1'
 }
