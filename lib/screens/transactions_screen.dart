@@ -41,11 +41,9 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     setState(() {
       _incomeTransactions = transactions
           .where((t) => t.type == 'income')
-          .cast<Transaction>()
           .toList();
       _expenseTransactions = transactions
           .where((t) => t.type == 'expense')
-          .cast<Transaction>()
           .toList();
       _isLoading = false;
     });

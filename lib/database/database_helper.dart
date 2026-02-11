@@ -151,7 +151,7 @@ class DatabaseHelper {
   Future<List<Transaction>> getTransactions() async {
     final db = await database;
     final result = await db.query('transactions', orderBy: 'date DESC');
-    return result.map((json) => Transaction.fromMap(json)).toList();
+    return result.map<Transaction>((json) => Transaction.fromMap(json)).toList();
   }
 
   Future<void> deleteTransaction(String id) async {

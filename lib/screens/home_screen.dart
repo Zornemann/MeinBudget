@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     setState(() {
-      _recentTransactions = transactions.take(5).cast<Transaction>().toList();
+      _recentTransactions = transactions.take(5).toList();
       _activeLoans = loans;
       _totalIncome = income;
       _totalExpenses = expenses;
