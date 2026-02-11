@@ -47,7 +47,11 @@ class Loan {
 
   // Berechnet die verbleibende Gesamtsumme
   double getRemainingAmount(DateTime currentDate) {
-    final monthsPassed = currentDate.difference(startDate).inDays ~/ 30;
+    // Berechne Monate zwischen Start- und aktuellem Datum
+    final yearDiff = currentDate.year - startDate.year;
+    final monthDiff = currentDate.month - startDate.month;
+    final monthsPassed = (yearDiff * 12) + monthDiff;
+    
     if (monthsPassed >= durationMonths) {
       return 0;
     }

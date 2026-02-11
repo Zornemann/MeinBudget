@@ -36,14 +36,16 @@ class _HomeScreenState extends State<HomeScreen> {
     // Berechne Summen für aktuellen Monat
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
     double income = 0;
     double expenses = 0;
 
     for (var transaction in transactions) {
-      if (transaction.date.isAfter(startOfMonth) &&
-          transaction.date.isBefore(endOfMonth)) {
+      if ((transaction.date.isAfter(startOfMonth) || 
+           transaction.date.isAtSameMomentAs(startOfMonth)) &&
+          (transaction.date.isBefore(endOfMonth) || 
+           transaction.date.isAtSameMomentAs(endOfMonth))) {
         if (transaction.type == 'income') {
           income += transaction.amount;
         } else {
