@@ -27,6 +27,7 @@ class MeinBudgetApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
+      themeMode: ThemeMode.system, // Respects system theme preference
       home: const HomeScreen(),
     );
   }
