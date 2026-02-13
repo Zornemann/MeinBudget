@@ -9,7 +9,7 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
 
       - name: Build APK (Release)
         run: flutter build apk --release
-      
+
       - name: Build App Bundle (Release)
         run: flutter build appbundle --release
 
