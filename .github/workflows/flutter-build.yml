@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,22 +19,52 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '11'
+        cache: 'gradle'
 
     - name: Install Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.16.0'
+        channel: 'stable'
         cache: true
+
+    - name: Show Flutter version
+      run: flutter --version
+
+    - name: Show Java version
+      run: java -version
+
+    - name: Show Flutter doctor
+      run: flutter doctor -v
 
     - name: Get dependencies
       run: flutter pub get
 
-    - name: Build APK Release
-      run: flutter build apk --release
+    - name: Run analyze
+      run: flutter analyze --no-fatal-infos
+      continue-on-error: true
 
-    - name: Upload APK Artifact
+    - name: Build APK Release
+      run: flutter build apk --release --target-platform=android-arm64
+
+    - name: List build outputs
+      run: |
+        echo "=== Checking for APK files ==="
+        find build -type f -name "*.apk" 2>/dev/null || echo "No APK files found"
+        ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "APK directory not found"
+
+    - name: Upload APK Artifacts
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: app-release
-        path: build/app/outputs/flutter-apk/app-release.apk
+        name: flutter-apk
+        path: build/app/outputs/flutter-apk/*.apk
         retention-days: 30
+
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs
+        path: build/
+        retention-days: 7
