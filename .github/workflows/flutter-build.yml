@@ -4,67 +4,27 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '11'
-        cache: 'gradle'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.13.0
 
-    - name: Install Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.16.0'
-        channel: 'stable'
-        cache: true
+      - name: Install dependencies
+        run: flutter pub get
 
-    - name: Show Flutter version
-      run: flutter --version
+      - name: Build APK
+        run: flutter build apk --release
 
-    - name: Show Java version
-      run: java -version
-
-    - name: Show Flutter doctor
-      run: flutter doctor -v
-
-    - name: Get dependencies
-      run: flutter pub get
-
-    - name: Run analyze
-      run: flutter analyze --no-fatal-infos
-      continue-on-error: true
-
-    - name: Build APK Release
-      run: flutter build apk --release --target-platform=android-arm64
-
-    - name: List build outputs
-      run: |
-        echo "=== Checking for APK files ==="
-        find build -type f -name "*.apk" 2>/dev/null || echo "No APK files found"
-        ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "APK directory not found"
-
-    - name: Upload APK Artifacts
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: flutter-apk
-        path: build/app/outputs/flutter-apk/*.apk
-        retention-days: 30
-
-    - name: Upload logs on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-logs
-        path: build/
-        retention-days: 7
+      - name: Upload APK
+        uses: actions/upload-artifact@v2
+        with:
+          name: app.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
