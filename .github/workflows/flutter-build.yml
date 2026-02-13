@@ -1,1 +1,30 @@
-name: Flutter Build \n\non: [push, pull_request] \n\njobs: \n  build: \n    runs-on: ubuntu-latest \n    steps: \n      - name: Checkout code \n        uses: actions/checkout@v4 \n      - name: Set up Flutter \n        uses: subosito/flutter-action@v2 \n        with: \n          flutter-version: 'stable' \n      - name: Get dependencies \n        run: flutter pub get \n      - name: Build project \n        run: flutter build apk \n      - name: Upload build artifacts \n        uses: actions/upload-artifact@v4 \n        with: \n          name: build-artifact \n          path: build/app/outputs/flutter-apk/app-release.apk
+name: Flutter Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v2
+
+    - name: Set up JDK
+      uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+
+    - name: Install Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: 'latest'
+    
+    - name: Run Flutter pub get
+      run: flutter pub get
+
+    - name: Run Flutter build
+      run: flutter build apk --release
