@@ -1,7 +1,15 @@
+on:
+  push:
+    branches:
+      - main
+      - copilot/fix-flutter-ci-build-errors
+  pull_request:
+    branches:
+      - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Entferne die Zeile 'defaults: run: working-directory: MeinBudget'
     
     steps:
       - name: Checkout code
@@ -25,7 +33,6 @@ jobs:
       - name: Fix gradlew line endings
         run: |
           sudo apt-get install -y dos2unix
-          # Nutze find, um die Datei sicher zu treffen, egal wo sie liegt
           find . -name "gradlew" -exec dos2unix {} +
           find . -name "gradlew" -exec chmod +x {} +
 
