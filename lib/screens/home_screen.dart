@@ -54,12 +54,27 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Icon-Mapping Logik
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'gehalt': return Icons.payments;
+      case 'kindergeld': return Icons.child_care;
+      case 'tanken': return Icons.local_gas_station;
+      case 'einkauf': return Icons.shopping_cart;
+      case 'kredite': return Icons.account_balance;
+      case 'versicherung': return Icons.security;
+      case 'miete': return Icons.home;
+      case 'freizeit': return Icons.confirmation_number;
+      default: return Icons.category;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Heller Hintergrund für Kontrast
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('Finanz Cockpit', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -86,21 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 30),
                     _buildSectionTitle('Schnellzugriff'),
                     const SizedBox(height: 16),
-                    _buildQuickActionButton(
-                      context,
-                      'Transaktionen',
-                      Icons.swap_horiz,
-                      Colors.indigo,
-                      const TransactionsScreen(),
-                    ),
+                    _buildQuickActionButton(context, 'Transaktionen', Icons.swap_horiz, Colors.indigo, const TransactionsScreen()),
                     const SizedBox(height: 12),
-                    _buildQuickActionButton(
-                      context,
-                      'Kontenverwaltung',
-                      Icons.account_balance_wallet,
-                      Colors.blueGrey,
-                      const AccountManagementScreen(),
-                    ),
+                    _buildQuickActionButton(context, 'Kontenverwaltung', Icons.account_balance_wallet, Colors.blueGrey, const AccountManagementScreen()),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -110,10 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-    );
+    return Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87));
   }
 
   Widget _buildModernBalanceCard(NumberFormat format) {
@@ -127,19 +127,14 @@ class _HomeScreenState extends State<HomeScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
+        boxShadow: [BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Gesamtguthaben', style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 8),
-          Text(
-            format.format(_balance),
-            style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
-          ),
+          Text(format.format(_balance), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -171,6 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildChartCard(String title, Widget chart) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -195,11 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.1)),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.1))),
         child: Row(
           children: [
             CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
@@ -231,24 +223,39 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryPieChart() {
-    if (_categoryExpenses.isEmpty) return const Text('Keine Ausgaben');
-    return SizedBox(
-      height: 160,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 2,
-          centerSpaceRadius: 30,
-          sections: _categoryExpenses.entries.map((e) {
-            final index = _categoryExpenses.keys.toList().indexOf(e.key);
-            return PieChartSectionData(
-              color: Colors.primaries[index % Colors.primaries.length],
-              value: e.value,
-              title: '',
-              radius: 40,
+    if (_categoryExpenses.isEmpty) return const Center(child: Text('Keine Ausgaben'));
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 30,
+              sections: _categoryExpenses.entries.map((e) {
+                final index = _categoryExpenses.keys.toList().indexOf(e.key);
+                return PieChartSectionData(color: Colors.primaries[index % Colors.primaries.length], value: e.value, title: '', radius: 35);
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: _categoryExpenses.keys.map((cat) {
+            final index = _categoryExpenses.keys.toList().indexOf(cat);
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(_getCategoryIcon(cat), size: 16, color: Colors.primaries[index % Colors.primaries.length]),
+                const SizedBox(width: 4),
+                Text(cat, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+              ],
             );
           }).toList(),
         ),
-      ),
+      ],
     );
   }
 }
