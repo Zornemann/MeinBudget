@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - copilot/fix-flutter-ci-build-errors
     paths:
       - 'lib/**'
       - 'android/**'
@@ -39,8 +40,8 @@ jobs:
 
       - name: Fix gradlew permissions and line endings
         run: |
-          sed -i 's/\r$//' android/gradlew
-          chmod +x android/gradlew
+          find . -name "gradlew" -exec sed -i 's/\r$//' {} +
+          find . -name "gradlew" -exec chmod +x {} +
 
       - name: Analyze project
         run: flutter analyze --no-fatal-infos
