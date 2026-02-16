@@ -35,16 +35,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
   Future<void> _loadTransactions() async {
     setState(() => _isLoading = true);
-    
     final transactions = await _dbHelper.getTransactions();
-    
     setState(() {
-      _incomeTransactions = transactions
-          .where((t) => t.type == 'income')
-          .toList();
-      _expenseTransactions = transactions
-          .where((t) => t.type == 'expense')
-          .toList();
+      _incomeTransactions =
+          transactions.where((t) => t.type == 'income').toList();
+      _expenseTransactions =
+          transactions.where((t) => t.type == 'expense').toList();
       _isLoading = false;
     });
   }
@@ -94,7 +90,9 @@ class _TransactionsScreenState extends State<TransactionsScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              type == 'income' ? Icons.account_balance_wallet : Icons.shopping_cart,
+              type == 'income'
+                  ? Icons.account_balance_wallet
+                  : Icons.shopping_cart,
               size: 64,
               color: Colors.grey,
             ),
@@ -114,11 +112,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
       itemBuilder: (context, index) {
         final transaction = transactions[index];
         final dateFormat = DateFormat('dd.MM.yyyy');
-        
+
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: type == 'income' ? Colors.green : Colors.red,
+              backgroundColor:
+                  type == 'income' ? Colors.green : Colors.red,
               child: Icon(
                 type == 'income' ? Icons.arrow_downward : Icons.arrow_upward,
                 color: Colors.white,
@@ -172,12 +171,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Löschen', style: TextStyle(color: Colors.red)),
+            child:
+                const Text('Löschen', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-
     if (confirmed == true) {
       await _deleteTransaction(id);
     }
@@ -185,8 +184,13 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
   Future<void> _showAddTransactionDialog(String type) async {
     final categories = await _dbHelper.getCategories(type);
-    
-    String? selectedCategory = categories.isNotEmpty ? categories[0].name : null;
+    final accounts = await _dbHelper.getAccounts();
+
+    String selectedAccountId =
+        accounts.isNotEmpty ? accounts[0]['id'] : 'default_main';
+    String? selectedCategory =
+        categories.isNotEmpty ? categories[0].name : null;
+
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
     DateTime selectedDate = DateTime.now();
@@ -199,13 +203,27 @@ class _TransactionsScreenState extends State<TransactionsScreen>
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            type == 'income' ? 'Neue Einnahme' : 'Neue Ausgabe',
-          ),
+          title: Text(type == 'income' ? 'Neue Einnahme' : 'Neue Ausgabe'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                DropdownButtonFormField<String>(
+                  value: selectedAccountId,
+                  decoration: const InputDecoration(
+                    labelText: 'Konto',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: accounts
+                      .map((acc) => DropdownMenuItem(
+                            value: acc['id'],
+                            child: Text(acc['name']),
+                          ))
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => selectedAccountId = value!),
+                ),
+                const SizedBox(height: 16),
                 if (!showNewCategoryField) ...[
                   DropdownButtonFormField<String>(
                     value: selectedCategory,
@@ -294,15 +312,14 @@ class _TransactionsScreenState extends State<TransactionsScreen>
             ),
             ElevatedButton(
               onPressed: () async {
-                final amount = double.tryParse(
-                  amountController.text.replaceAll(',', '.'),
-                );
-                
+                final amount =
+                    double.tryParse(amountController.text.replaceAll(',', '.'));
                 if (amount == null || amount <= 0) {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Bitte geben Sie einen gültigen Betrag ein'),
+                      content:
+                          Text('Bitte geben Sie einen gültigen Betrag ein'),
                     ),
                   );
                   return;
@@ -315,12 +332,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Bitte geben Sie einen Kategorienamen ein'),
+                        content:
+                            Text('Bitte geben Sie einen Kategorienamen ein'),
                       ),
                     );
                     return;
                   }
-                  // Neue Kategorie speichern
                   final newCategory = Category(
                     id: const Uuid().v4(),
                     name: categoryName,
@@ -334,6 +351,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
                 final transaction = Transaction(
                   id: const Uuid().v4(),
+                  accountId: selectedAccountId,
                   type: type,
                   category: categoryName,
                   amount: amount,
@@ -345,7 +363,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                 if (!mounted) return;
                 Navigator.pop(dialogContext);
                 _loadTransactions();
-                
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
