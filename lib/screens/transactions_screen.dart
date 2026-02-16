@@ -284,37 +284,41 @@ class _TransactionsScreenState extends State<TransactionsScreen>
               child: const Text('Abbrechen'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                final amount = double.tryParse(amountController.text) ?? 0.0;
-                final categoryName = showNewCategoryField ? newCategoryController.text : selectedCategory;
+               onPressed: () async {
+               // Ersetzt Komma durch Punkt für die Berechnung
+               final amountText = amountController.text.replaceAll(',', '.');
+               final amount = double.tryParse(amountText) ?? 0.0;
+    
+              final categoryName = showNewCategoryField ? newCategoryController.text : selectedCategory;
 
-                if (categoryName != null && amount > 0) {
-                  if (showNewCategoryField) {
-                    await _dbHelper.insertCategory(Category(
-                      id: const Uuid().v4(),
-                      name: categoryName,
-                      type: type,
-                      isCustom: true,
-                    ));
-                  }
+               // Validierung mit Fehlermeldung
+               if (amount <= 0) {
+               ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('Bitte einen gültigen Betrag eingeben.')),
+               );
+               return;
+               }
 
-                  final transaction = Transaction(
-                    id: const Uuid().v4(),
-                    accountId: selectedAccountId, // Pflichtparameter hinzugefügt
-                    type: type,
-                    category: categoryName,
-                    amount: amount,
-                    description: descriptionController.text,
-                    date: selectedDate,
-                  );
+               if (categoryName == null || categoryName.isEmpty) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Bitte eine Kategorie wählen oder erstellen.')),
+               );
+               return;
+               }
 
-                  await _dbHelper.insertTransaction(transaction);
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  _loadTransactions();
-                }
-              },
-              child: const Text('Speichern'),
+               try {
+               // Speicherlogik...
+               // await _dbHelper.insertTransaction(...);
+               Navigator.pop(context);
+               _loadTransactions();
+               } catch (e) {
+               ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(content: Text('Fehler beim Speichern: $e')),
+               );
+               }
+               },
+               child: const Text('Speichern'),
+               ),
             ),
           ],
         ),
