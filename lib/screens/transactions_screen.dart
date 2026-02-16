@@ -46,7 +46,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      app_appBar: AppBar(
+      appBar: AppBar(
         title: const Text('Transaktionen'),
         bottom: TabBar(
           controller: _tabController,
