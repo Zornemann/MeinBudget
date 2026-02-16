@@ -27,25 +27,21 @@ jobs:
           flutter-version: '3.19.0'
           channel: 'stable'
 
-      - name: Build APK (Force Regenerate Wrapper)
+      - name: Build APK (Line Ending Fix)
         run: |
-          # 1. In das Projektverzeichnis
+          # 1. In das Projektverzeichnis wechseln
           PROJECT_DIR=$(find . -name "pubspec.yaml" -exec dirname {} \;)
           cd "$PROJECT_DIR"
           
-          # 2. Dependencies
+          # 2. Abhängigkeiten laden
           flutter pub get
           
-          # 3. Die problematische Datei löschen
-          rm -f android/gradlew
+          # 3. Datei mit sed reparieren (entfernt Windows-Endungen \r)
+          # Dies ist stabiler als dos2unix oder gradle wrapper
+          sed -i 's/\r$//' android/gradlew
+          chmod +x android/gradlew
           
-          # 4. Den Wrapper komplett neu generieren (erzeugt natives Linux-Format)
-          cd android
-          gradle wrapper --gradle-version 8.3 --distribution-type bin
-          chmod +x gradlew
-          cd ..
-          
-          # 5. Build starten
+          # 4. Build starten
           flutter build apk --release
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
