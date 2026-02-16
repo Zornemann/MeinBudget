@@ -1,3 +1,5 @@
+name: Flutter CI
+
 on:
   push:
     branches:
@@ -27,6 +29,14 @@ jobs:
           flutter-version: '3.19.0'
           channel: 'stable'
 
+      - name: Generate Launcher Icons
+        run: |
+          PROJECT_DIR=$(find . -name "pubspec.yaml" -exec dirname {} \;)
+          cd "$PROJECT_DIR"
+          flutter pub get
+          # Falls das Icon-Bild existiert, werden hier die Android/iOS Icons erstellt
+          dart run flutter_launcher_icons || echo "Icon generation failed, skipping..."
+
       - name: Build APK (Repair with valid name)
         run: |
           PROJECT_DIR=$(find . -name "pubspec.yaml" -exec dirname {} \;)
@@ -35,14 +45,13 @@ jobs:
           # 1. Radikale Reinigung
           rm -f android/gradlew
           
-          # 2. Android-Struktur reparieren (mit gültigem Paketnamen)
-          # Der Name 'mein_budget' ist hier nur für die Generierung der Tool-Dateien
+          # 2. Android-Struktur reparieren
           flutter create . --platforms android --project-name mein_budget
           
           # 3. Sicherstellen, dass die Datei ausführbar ist
           chmod +x android/gradlew
           
-          # 4. Lizenzen vorab akzeptieren (Sicherheitsmaßnahme)
+          # 4. Lizenzen vorab akzeptieren
           yes | flutter doctor --android-licenses || true
           
           # 5. Build starten
