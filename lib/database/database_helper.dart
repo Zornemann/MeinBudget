@@ -105,12 +105,20 @@ class DatabaseHelper {
   // --- KONTEN CRUD ---
   Future<void> insertAccount(Map<String, dynamic> account) async {
     final db = await database;
-    await db.insert('accounts', account);
+    await db.insert('accounts', account, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getAccounts() async {
     final db = await database;
     return await db.query('accounts', orderBy: 'name ASC');
+  }
+
+  Future<void> deleteAccount(String accountId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('transactions', where: 'accountId = ?', whereArgs: [accountId]);
+      await txn.delete('accounts', where: 'id = ?', whereArgs: [accountId]);
+    });
   }
 
   // --- TRANSAKTIONEN CRUD ---
@@ -139,7 +147,23 @@ class DatabaseHelper {
     }
     return balance;
   }
-Future<void> deleteTransaction(String id) async {
+
+  Future<double> getTotalBalance() async {
+    final db = await database;
+    final List<Map<String, dynamic>> accounts = await db.query('accounts');
+    double totalInitialBalance = 0;
+    for (var acc in accounts) {
+      totalInitialBalance += (acc['initialBalance'] as num).toDouble();
+    }
+    final transactions = await getTransactions();
+    double transactionSum = 0;
+    for (var t in transactions) {
+      transactionSum += (t.type == 'income' ? t.amount : -t.amount);
+    }
+    return totalInitialBalance + transactionSum;
+  }
+
+  Future<void> deleteTransaction(String id) async {
     final db = await database;
     await db.delete(
       'transactions',
@@ -147,6 +171,7 @@ Future<void> deleteTransaction(String id) async {
       whereArgs: [id],
     );
   }
+
   // --- KREDITE CRUD ---
   Future<void> insertLoan(Loan loan) async {
     final db = await database;
