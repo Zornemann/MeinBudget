@@ -19,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _totalIncome = 0.0;
   double _totalExpense = 0.0;
   Map<String, double> _categoryExpenses = {};
+  List<Map<String, dynamic>> _accountBalances = []; // Neu für Konten-Chart
   bool _isLoading = true;
 
   @override
@@ -31,7 +32,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     final transactions = await _dbHelper.getTransactions();
     final balance = await _dbHelper.getTotalBalance();
+    final accounts = await _dbHelper.getAccounts();
 
+    // 1. Einnahmen & Ausgaben berechnen
     double income = 0;
     double expense = 0;
     Map<String, double> catExp = {};
@@ -45,16 +48,26 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
+    // 2. Kontostände für Verteilungs-Chart berechnen
+    List<Map<String, dynamic>> accStats = [];
+    for (var acc in accounts) {
+      final transBalance = await _dbHelper.getAccountBalance(acc['id']);
+      final totalAccBalance = (acc['initialBalance'] as num).toDouble() + transBalance;
+      if (totalAccBalance != 0) {
+        accStats.add({'name': acc['name'], 'balance': totalAccBalance});
+      }
+    }
+
     setState(() {
       _balance = balance;
       _totalIncome = income;
       _totalExpense = expense;
       _categoryExpenses = catExp;
+      _accountBalances = accStats;
       _isLoading = false;
     });
   }
 
-  // Icon-Mapping Logik
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
       case 'gehalt': return Icons.payments;
@@ -98,6 +111,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildChartCard('Einnahmen vs. Ausgaben', _buildMainPieChart()),
                     const SizedBox(height: 20),
                     _buildChartCard('Ausgaben nach Kategorien', _buildCategoryPieChart()),
+                    const SizedBox(height: 20),
+                    _buildChartCard('Verteilung auf Konten', _buildAccountPieChart()),
                     const SizedBox(height: 30),
                     _buildSectionTitle('Schnellzugriff'),
                     const SizedBox(height: 16),
@@ -206,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainPieChart() {
-    if (_totalIncome == 0 && _totalExpense == 0) return const Text('Keine Daten');
+    if (_totalIncome == 0 && _totalExpense == 0) return const Center(child: Text('Keine Daten'));
     return SizedBox(
       height: 160,
       child: PieChart(
@@ -256,6 +271,29 @@ class _HomeScreenState extends State<HomeScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildAccountPieChart() {
+    if (_accountBalances.isEmpty) return const Center(child: Text('Keine Kontodaten'));
+    return SizedBox(
+      height: 160,
+      child: PieChart(
+        PieChartData(
+          sectionsSpace: 2,
+          centerSpaceRadius: 30,
+          sections: _accountBalances.map((acc) {
+            final index = _accountBalances.indexOf(acc);
+            return PieChartSectionData(
+              color: Colors.accents[index % Colors.accents.length],
+              value: acc['balance'] < 0 ? 0 : acc['balance'],
+              title: acc['name'],
+              radius: 40,
+              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 }
