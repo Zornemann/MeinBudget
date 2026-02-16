@@ -12,7 +12,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+    # Dies stellt sicher, dass alle Schritte im richtigen Unterordner starten
+    defaults:
+      run:
+        working-directory: MeinBudget
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -32,12 +36,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Fix gradlew line endings (Universal Fix)
+      - name: Fix gradlew line endings (Finaler Pfad Fix)
         run: |
           sudo apt-get install -y dos2unix
-          # Findet alle gradlew Dateien im gesamten Projekt und säubert sie
-          find . -type f -name "gradlew" -exec dos2unix {} +
-          find . -type f -name "gradlew" -exec chmod +x {} +
+          # Wir reparieren die Datei direkt im Unterordner
+          dos2unix android/gradlew
+          chmod +x android/gradlew
 
       - name: Analyze project
         run: flutter analyze --no-fatal-infos
@@ -46,8 +50,9 @@ jobs:
         run: flutter build apk --release
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: MeinBudget/build/app/outputs/flutter-apk/app-release.apk
