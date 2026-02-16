@@ -17,6 +17,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -26,13 +32,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Rebuild Gradle Wrapper
-        # Dies löscht die Windows-Version und erstellt eine saubere Linux-Version
+      - name: Fix gradlew line endings
         run: |
-          cd android
-          rm -f gradlew
-          gradle wrapper
-          chmod +x gradlew
+          sudo apt-get install -y dos2unix
+          dos2unix android/gradlew
+          chmod +x android/gradlew
 
       - name: Analyze project
         run: flutter analyze --no-fatal-infos
@@ -41,3 +45,8 @@ jobs:
         run: flutter build apk --release
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
