@@ -77,7 +77,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     final dateFormat = DateFormat('dd.MM.yyyy');
 
     if (transactions.isEmpty) {
-      return Center(child: Text('Keine Einträge vorhanden'));
+      return const Center(child: Text('Keine Einträge vorhanden'));
     }
 
     return ListView.builder(
@@ -132,21 +132,22 @@ class _TransactionsScreenState extends State<TransactionsScreen>
   }
 
   Future<void> _showTransactionDialog(String type, {Transaction? existing}) async {
-    final categories = await _dbHelper.getCategories(type);
+    List<Category> categories = await _dbHelper.getCategories(type);
     final accounts = await _dbHelper.getAccounts();
 
     String selectedAccountId = existing?.accountId ?? (accounts.isNotEmpty ? accounts[0]['id'] : 'default_main');
     String? selectedCategory = existing?.category ?? (categories.isNotEmpty ? categories[0].name : null);
     
-    // Betrag für Anzeige vorbereiten (Punkt zu Komma)
     final amountController = TextEditingController(text: existing?.amount.toString().replaceAll('.', ',') ?? '');
     final descController = TextEditingController(text: existing?.description ?? '');
     bool showNewCat = false;
     final newCatController = TextEditingController();
 
+    if (!mounted) return;
+
     await showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      builder: (context) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: Text(existing == null ? 'Neu' : 'Editieren'),
           content: SingleChildScrollView(
@@ -196,12 +197,26 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                   return;
                 }
 
+                String finalCategory;
+                if (showNewCat && newCatController.text.isNotEmpty) {
+                  finalCategory = newCatController.text;
+                  final nCat = Category(id: const Uuid().v4(), name: finalCategory, type: type, isCustom: true);
+                  await _dbHelper.insertCategory(nCat);
+                } else {
+                  finalCategory = selectedCategory ?? '';
+                }
+
+                if (finalCategory.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kategorie fehlt!')));
+                  return;
+                }
+
                 try {
                   final t = Transaction(
                     id: existing?.id ?? const Uuid().v4(),
                     accountId: selectedAccountId,
                     type: type,
-                    category: showNewCat ? newCatController.text : selectedCategory!,
+                    category: finalCategory,
                     amount: amount,
                     description: descController.text,
                     date: existing?.date ?? DateTime.now(),
