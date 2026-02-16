@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/transaction.dart';
 import 'transactions_screen.dart';
-import 'account_management_screen.dart'; 
+import 'account_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,9 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
     final transactions = await _dbHelper.getTransactions();
-    // Hinweis: Hier wird aktuell nur das 'default_main' Konto berechnet. 
-    // Später könntest du hier die Summe ALLER Konten laden.
-    final balance = await _dbHelper.getAccountBalance('default_main');
+    final balance = await _dbHelper.getTotalBalance();
 
     double income = 0;
     double expense = 0;
@@ -61,60 +59,49 @@ class _HomeScreenState extends State<HomeScreen> {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mein Budget Dashboard'), centerTitle: true),
+      backgroundColor: Colors.grey[100], // Heller Hintergrund für Kontrast
+      appBar: AppBar(
+        title: const Text('Finanz Cockpit', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadDashboardData,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildBalanceCard(currencyFormat),
-                    const SizedBox(height: 24),
-                    const Text('Einnahmen vs. Ausgaben', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    _buildModernBalanceCard(currencyFormat),
+                    const SizedBox(height: 30),
+                    _buildSectionTitle('Statistiken'),
                     const SizedBox(height: 16),
-                    _buildMainPieChart(),
-                    const SizedBox(height: 40),
-                    const Text('Ausgaben nach Kategorien', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    _buildChartCard('Einnahmen vs. Ausgaben', _buildMainPieChart()),
+                    const SizedBox(height: 20),
+                    _buildChartCard('Ausgaben nach Kategorien', _buildCategoryPieChart()),
+                    const SizedBox(height: 30),
+                    _buildSectionTitle('Schnellzugriff'),
                     const SizedBox(height: 16),
-                    _buildCategoryPieChart(),
-                    const SizedBox(height: 32),
-                    
-                    // Button 1: Transaktionen
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.list),
-                        label: const Text('Transaktionen verwalten'),
-                        onPressed: () async {
-                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const TransactionsScreen()));
-                          _loadDashboardData();
-                        },
-                      ),
+                    _buildQuickActionButton(
+                      context,
+                      'Transaktionen',
+                      Icons.swap_horiz,
+                      Colors.indigo,
+                      const TransactionsScreen(),
                     ),
-                    
                     const SizedBox(height: 12),
-                    
-                    // Button 2: Konten
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.account_balance_wallet),
-                        label: const Text('Konten verwalten'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueGrey,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AccountManagementScreen()),
-                          );
-                          _loadDashboardData();
-                        },
-                      ),
+                    _buildQuickActionButton(
+                      context,
+                      'Kontenverwaltung',
+                      Icons.account_balance_wallet,
+                      Colors.blueGrey,
+                      const AccountManagementScreen(),
                     ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -122,16 +109,104 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBalanceCard(NumberFormat format) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+    );
+  }
+
+  Widget _buildModernBalanceCard(NumberFormat format) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.indigo[700]!, Colors.indigo[400]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Gesamtguthaben', style: TextStyle(color: Colors.white70, fontSize: 16)),
+          const SizedBox(height: 8),
+          Text(
+            format.format(_balance),
+            style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSmallInfo('Einnahmen', format.format(_totalIncome), Icons.arrow_upward, Colors.greenAccent),
+              _buildSmallInfo('Ausgaben', format.format(_totalExpense), Icons.arrow_downward, Colors.orangeAccent),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallInfo(String label, String value, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Aktueller Kontostand', style: TextStyle(fontSize: 16)),
-            Text(format.format(_balance),
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: _balance >= 0 ? Colors.green : Colors.red)),
+            Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartCard(String title, Widget chart) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
+          const SizedBox(height: 20),
+          chart,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(BuildContext context, String title, IconData icon, Color color, Widget screen) {
+    return InkWell(
+      onTap: () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+        _loadDashboardData();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
+            const SizedBox(width: 16),
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            const Icon(Icons.chevron_right, color: Colors.grey),
           ],
         ),
       ),
@@ -139,14 +214,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainPieChart() {
-    if (_totalIncome == 0 && _totalExpense == 0) return const SizedBox(height: 100, child: Center(child: Text('Keine Daten')));
+    if (_totalIncome == 0 && _totalExpense == 0) return const Text('Keine Daten');
     return SizedBox(
-      height: 200,
+      height: 160,
       child: PieChart(
         PieChartData(
+          sectionsSpace: 4,
+          centerSpaceRadius: 40,
           sections: [
-            PieChartSectionData(color: Colors.green, value: _totalIncome, title: 'In', radius: 50, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            PieChartSectionData(color: Colors.red, value: _totalExpense, title: 'Out', radius: 50, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            PieChartSectionData(color: Colors.greenAccent[700], value: _totalIncome, title: '', radius: 25),
+            PieChartSectionData(color: Colors.redAccent[200], value: _totalExpense, title: '', radius: 25),
           ],
         ),
       ),
@@ -154,18 +231,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryPieChart() {
-    if (_categoryExpenses.isEmpty) return const SizedBox(height: 100, child: Center(child: Text('Keine Ausgaben')));
+    if (_categoryExpenses.isEmpty) return const Text('Keine Ausgaben');
     return SizedBox(
-      height: 200,
+      height: 160,
       child: PieChart(
         PieChartData(
+          sectionsSpace: 2,
+          centerSpaceRadius: 30,
           sections: _categoryExpenses.entries.map((e) {
+            final index = _categoryExpenses.keys.toList().indexOf(e.key);
             return PieChartSectionData(
-              color: Colors.primaries[_categoryExpenses.keys.toList().indexOf(e.key) % Colors.primaries.length],
+              color: Colors.primaries[index % Colors.primaries.length],
               value: e.value,
-              title: e.key,
-              radius: 60,
-              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+              title: '',
+              radius: 40,
             );
           }).toList(),
         ),
