@@ -32,11 +32,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Fix gradlew line endings
+      - name: Fix gradlew line endings (Universal Fix)
         run: |
           sudo apt-get install -y dos2unix
-          dos2unix android/gradlew
-          chmod +x android/gradlew
+          # Findet alle gradlew Dateien im gesamten Projekt und säubert sie
+          find . -type f -name "gradlew" -exec dos2unix {} +
+          find . -type f -name "gradlew" -exec chmod +x {} +
 
       - name: Analyze project
         run: flutter analyze --no-fatal-infos
