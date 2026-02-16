@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Loan> _activeLoans = [];
   double _totalIncome = 0;
   double _totalExpenses = 0;
+  double _grandTotal = 0;
   bool _isLoading = true;
 
   @override
@@ -32,14 +33,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+   // --- HIER DIE VERVOLLSTÄNDIGTE LOAD-DATA METHODE ---
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
-    // 1. Konten laden
     final accounts = await _dbHelper.getAccounts();
-    
-    // 2. Transaktionen laden und nach Konto filtern
     final allTransactions = await _dbHelper.getTransactions();
+    
+    // 1. Berechnung des Gesamtvermögens über ALLE Konten
+    double totalAll = 0;
+    for (var t in allTransactions) {
+      totalAll += (t.type == 'income' ? t.amount : -t.amount);
+    }
+
+    // 2. Filter für das aktuell ausgewählte Konto
     final filteredTransactions = allTransactions
         .where((t) => t.accountId == _selectedAccountId)
         .toList();
@@ -67,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _accounts = accounts;
+      _grandTotal = totalAll; // Neuer Wert für alle Konten
       _recentTransactions = filteredTransactions.take(5).toList();
       _activeLoans = loans;
       _totalIncome = income;
@@ -75,10 +83,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // --- HIER DAS OPTIMIERTE BUILD FÜR DEN HEADER ---
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
     final balance = _totalIncome - _totalExpenses;
+    
+    // Name des aktuellen Kontos finden
+    final currentAccountName = _accounts.isEmpty 
+        ? 'Lädt...' 
+        : _accounts.firstWhere((a) => a['id'] == _selectedAccountId, orElse: () => _accounts.first)['name'];
 
     return Scaffold(
       appBar: AppBar(
@@ -100,14 +114,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(32),
-                        ),
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
                       ),
                       child: Column(
                         children: [
                           Text(
-                            'Verfügbares Guthaben',
+                            'Gesamtvermögen (alle Konten)',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            currencyFormat.format(_grandTotal),
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                          ),
+                          const Divider(height: 32, indent: 60, endIndent: 60),
+                          Text(
+                            'Saldo: $currentAccountName',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
@@ -125,8 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     
                     const SizedBox(height: 16),
-                    
-                    // NEU: Konto-Umschalter
                     _buildAccountSwitcher(),
 
                     Padding(
@@ -137,62 +156,31 @@ class _HomeScreenState extends State<HomeScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: _buildStatCard(
-                                  context,
-                                  'Einnahmen',
-                                  _totalIncome,
-                                  Colors.green,
-                                  Icons.add_circle_outline,
-                                ),
+                                child: _buildStatCard(context, 'Einnahmen', _totalIncome, Colors.green, Icons.add_circle_outline),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: _buildStatCard(
-                                  context,
-                                  'Ausgaben',
-                                  _totalExpenses,
-                                  Colors.red,
-                                  Icons.remove_circle_outline,
-                                ),
+                                child: _buildStatCard(context, 'Ausgaben', _totalExpenses, Colors.red, Icons.remove_circle_outline),
                               ),
                             ],
                           ),
                           const SizedBox(height: 24),
-                          Text(
-                            'Verwaltung',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          ),
+                          Text('Verwaltung', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              _buildActionButton(
-                                context,
-                                'Transaktionen',
-                                Icons.account_balance_wallet,
-                                const TransactionsScreen(),
-                              ),
+                              _buildActionButton(context, 'Transaktionen', Icons.account_balance_wallet, const TransactionsScreen()),
                               const SizedBox(width: 12),
-                              _buildActionButton(
-                                context,
-                                'Kredite',
-                                Icons.credit_card,
-                                const LoansScreen(),
-                              ),
+                              _buildActionButton(context, 'Kredite', Icons.credit_card, const LoansScreen()),
                             ],
                           ),
                           const SizedBox(height: 32),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Letzte Transaktionen',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                              ),
+                              Text('Letzte Transaktionen', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                               TextButton(
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const TransactionsScreen()),
-                                ),
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TransactionsScreen())),
                                 child: const Text('Alle zeigen'),
                               ),
                             ],
@@ -214,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- HILFS-WIDGETS ---
 
-  Widget _buildAccountSwitcher() {
+Widget _buildAccountSwitcher() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -223,12 +211,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Text('Meine Konten', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         SizedBox(
-          height: 80,
+          height: 70,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _accounts.length,
+            itemCount: _accounts.length + 1, // +1 für den Hinzufügen-Button
             itemBuilder: (context, index) {
+              if (index == _accounts.length) {
+                return _buildAddAccountCard();
+              }
+
               final acc = _accounts[index];
               final isSelected = acc['id'] == _selectedAccountId;
               return GestureDetector(
@@ -238,16 +230,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 150,
+                  width: 140,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
                     color: isSelected 
                         ? Theme.of(context).colorScheme.primary 
                         : Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(16),
-                    border: isSelected 
-                        ? Border.all(color: Theme.of(context).colorScheme.primaryContainer, width: 2) 
-                        : null,
                   ),
                   child: Center(
                     child: Text(
@@ -264,6 +253,65 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAddAccountCard() {
+    return GestureDetector(
+      onTap: _showAddAccountDialog,
+      child: Container(
+        width: 60,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            style: BorderStyle.dashed,
+          ),
+        ),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showAddAccountDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Neues Konto'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'z.B. Bargeld, Tagesgeld...',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                final newAccount = {
+                  'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                  'name': controller.text,
+                  'icon': 'account_balance',
+                  'initialBalance': 0.0,
+                };
+                await _dbHelper.insertAccount(newAccount);
+                Navigator.pop(context);
+                _loadData();
+              }
+            },
+            child: const Text('Erstellen'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -355,16 +403,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(Icons.account_balance_wallet_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 16),
-            const Text('Noch keine Buchungen auf diesem Konto.'),
-          ],
-        ),
+        padding: EdgeInsets.all(32),
+        child: Text('Keine Buchungen auf diesem Konto.'),
       ),
     );
   }
