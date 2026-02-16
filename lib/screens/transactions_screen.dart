@@ -211,11 +211,11 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                     border: OutlineInputBorder(),
                   ),
                   items: accounts
-                      .map((acc) => DropdownMenuItem(
-                            value: acc['id'],
-                            child: Text(acc['name']),
-                          ))
-                      .toList(),
+                   .map<DropdownMenuItem<String>>((acc) => DropdownMenuItem<String>( // <--- Hier die Typen ergänzen
+                   value: acc['id'].toString(), // Sicherstellen, dass es ein String ist
+                   child: Text(acc['name'].toString()),
+                   ))
+                   .toList(),
                   onChanged: (value) => setDialogState(() => selectedAccountId = value!),
                 ),
                 const SizedBox(height: 16),
