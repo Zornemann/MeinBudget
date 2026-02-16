@@ -15,6 +15,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  
+  // Multi-Account Variablen
+  String _selectedAccountId = 'default_main'; 
+  List<Map<String, dynamic>> _accounts = [];
+  
   List<Transaction> _recentTransactions = [];
   List<Loan> _activeLoans = [];
   double _totalIncome = 0;
@@ -30,10 +35,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
-    final transactions = await _dbHelper.getTransactions();
-    final loans = await _dbHelper.getLoans();
+    // 1. Konten laden
+    final accounts = await _dbHelper.getAccounts();
+    
+    // 2. Transaktionen laden und nach Konto filtern
+    final allTransactions = await _dbHelper.getTransactions();
+    final filteredTransactions = allTransactions
+        .where((t) => t.accountId == _selectedAccountId)
+        .toList();
 
-    // Berechne Summen für aktuellen Monat
+    final loans = await _dbHelper.getLoans();
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
@@ -41,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     double income = 0;
     double expenses = 0;
 
-    for (var transaction in transactions) {
+    for (var transaction in filteredTransactions) {
       if ((transaction.date.isAfter(startOfMonth) || 
            transaction.date.isAtSameMomentAs(startOfMonth)) &&
           (transaction.date.isBefore(endOfMonth) || 
@@ -55,7 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     setState(() {
-      _recentTransactions = transactions.take(5).toList();
+      _accounts = accounts;
+      _recentTransactions = filteredTransactions.take(5).toList();
       _activeLoans = loans;
       _totalIncome = income;
       _totalExpenses = expenses;
@@ -72,6 +84,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('MeinBudget'),
         centerTitle: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -79,168 +93,118 @@ class _HomeScreenState extends State<HomeScreen> {
               onRefresh: _loadData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Übersichtskarte
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Aktueller Monat',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildSummaryItem(
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(32),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Verfügbares Guthaben',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currencyFormat.format(balance),
+                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: balance >= 0 ? Colors.green : Colors.red,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // NEU: Konto-Umschalter
+                    _buildAccountSwitcher(),
+
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
                                   context,
                                   'Einnahmen',
-                                  currencyFormat.format(_totalIncome),
+                                  _totalIncome,
                                   Colors.green,
-                                  Icons.arrow_downward,
+                                  Icons.add_circle_outline,
                                 ),
-                                _buildSummaryItem(
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildStatCard(
                                   context,
                                   'Ausgaben',
-                                  currencyFormat.format(_totalExpenses),
+                                  _totalExpenses,
                                   Colors.red,
-                                  Icons.arrow_upward,
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 32),
-                            Text(
-                              'Saldo',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              currencyFormat.format(balance),
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    color: balance >= 0 ? Colors.green : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Aktionen
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const TransactionsScreen(),
-                                ),
-                              );
-                              _loadData();
-                            },
-                            icon: const Icon(Icons.account_balance_wallet),
-                            label: const Text('Transaktionen'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const LoansScreen(),
-                                ),
-                              );
-                              _loadData();
-                            },
-                            icon: const Icon(Icons.credit_card),
-                            label: const Text('Kredite'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Letzte Transaktionen
-                    Text(
-                      'Letzte Transaktionen',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    if (_recentTransactions.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: Text('Keine Transaktionen vorhanden'),
-                          ),
-                        ),
-                      )
-                    else
-                      ...(_recentTransactions.map((transaction) => Card(
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: transaction.type == 'income'
-                                    ? Colors.green
-                                    : Colors.red,
-                                child: Icon(
-                                  transaction.type == 'income'
-                                      ? Icons.arrow_downward
-                                      : Icons.arrow_upward,
-                                  color: Colors.white,
+                                  Icons.remove_circle_outline,
                                 ),
                               ),
-                              title: Text(transaction.category),
-                              subtitle: Text(transaction.description),
-                              trailing: Text(
-                                currencyFormat.format(transaction.amount),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: transaction.type == 'income'
-                                      ? Colors.green
-                                      : Colors.red,
-                                ),
-                              ),
-                            ),
-                          ))),
-                    const SizedBox(height: 24),
-
-                    // Aktive Kredite
-                    if (_activeLoans.isNotEmpty) ...[
-                      Text(
-                        'Aktive Kredite',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      ...(_activeLoans.map((loan) {
-                        final remaining = loan.getRemainingAmount(DateTime.now());
-                        return Card(
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.credit_card),
-                            ),
-                            title: Text(loan.name),
-                            subtitle: Text(
-                              '${loan.durationMonths} Monate • ${loan.interestRate.toStringAsFixed(2)}% Zinsen',
-                            ),
-                            trailing: Text(
-                              currencyFormat.format(remaining),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            ],
                           ),
-                        );
-                      })),
-                    ],
+                          const SizedBox(height: 24),
+                          Text(
+                            'Verwaltung',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              _buildActionButton(
+                                context,
+                                'Transaktionen',
+                                Icons.account_balance_wallet,
+                                const TransactionsScreen(),
+                              ),
+                              const SizedBox(width: 12),
+                              _buildActionButton(
+                                context,
+                                'Kredite',
+                                Icons.credit_card,
+                                const LoansScreen(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Letzte Transaktionen',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const TransactionsScreen()),
+                                ),
+                                child: const Text('Alle zeigen'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (_recentTransactions.isEmpty)
+                            _buildEmptyState()
+                          else
+                            ..._recentTransactions.map((t) => _buildTransactionTile(t, currencyFormat)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -248,30 +212,160 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSummaryItem(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
+  // --- HILFS-WIDGETS ---
+
+  Widget _buildAccountSwitcher() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium,
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Text('Meine Konten', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+        SizedBox(
+          height: 80,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _accounts.length,
+            itemBuilder: (context, index) {
+              final acc = _accounts[index];
+              final isSelected = acc['id'] == _selectedAccountId;
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _selectedAccountId = acc['id']);
+                  _loadData();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 150,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.primary 
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: isSelected 
+                        ? Border.all(color: Theme.of(context).colorScheme.primaryContainer, width: 2) 
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      acc['name'],
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : null,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatCard(BuildContext context, String title, double amount, Color color, IconData icon) {
+    final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 12),
+          Text(title, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          FittedBox(
+            child: Text(
+              currencyFormat.format(amount),
+              style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context, String label, IconData icon, Widget screen) {
+    return Expanded(
+      child: InkWell(
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+          _loadData();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 8),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionTile(Transaction t, NumberFormat format) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: (t.type == 'income' ? Colors.green : Colors.red).withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            t.type == 'income' ? Icons.arrow_downward : Icons.arrow_upward,
+            color: t.type == 'income' ? Colors.green : Colors.red,
+            size: 20,
+          ),
+        ),
+        title: Text(t.category, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(t.description),
+        trailing: Text(
+          format.format(t.amount),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: t.type == 'income' ? Colors.green : Colors.red,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Icon(Icons.account_balance_wallet_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+            const SizedBox(height: 16),
+            const Text('Noch keine Buchungen auf diesem Konto.'),
+          ],
+        ),
+      ),
     );
   }
 }
