@@ -25,7 +25,7 @@ class DatabaseHelper {
       return await factory.openDatabase(
         filePath,
         options: OpenDatabaseOptions(
-          version: 1,
+          version: 2,
           onCreate: _createDB,
         ),
       );
@@ -36,7 +36,7 @@ class DatabaseHelper {
 
       return await openDatabase(
         path,
-        version: 1,
+        version: 2,
         onCreate: _createDB,
       );
     }
@@ -129,3 +129,89 @@ class DatabaseHelper {
     }
     return balance;
   }
+ // --- KREDITE (LOANS) CRUD ---
+  Future<void> insertLoan(Loan loan) async {
+    final db = await database;
+    await db.insert('loans', loan.toMap());
+  }
+
+  Future<List<Loan>> getLoans() async {
+    final db = await database;
+    final result = await db.query('loans', orderBy: 'startDate DESC');
+    return result.map((json) => Loan.fromMap(json)).toList();
+  }
+
+  Future<void> deleteLoan(String id) async {
+    final db = await database;
+    await db.delete('loans', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- KATEGORIEN CRUD ---
+  Future<void> insertCategory(Category category) async {
+    final db = await database;
+    await db.insert('categories', category.toMap());
+  }
+
+  Future<List<Category>> getCategories(String type) async {
+    final db = await database;
+    final result = await db.query(
+      'categories',
+      where: 'type = ?',
+      whereArgs: [type],
+      orderBy: 'isCustom, name',
+    );
+    return result.map((json) => Category.fromMap(json)).toList();
+  }
+
+  Future<void> _insertDefaultCategories(Database db) async {
+    final List<Map<String, dynamic>> defaults = [
+      {'id': 'income_gehalt', 'name': 'Gehalt', 'type': 'income', 'isCustom': 0},
+      {'id': 'income_kindergeld', 'name': 'Kindergeld', 'type': 'income', 'isCustom': 0},
+      {'id': 'expense_kredite', 'name': 'Kredite', 'type': 'expense', 'isCustom': 0},
+      {'id': 'expense_einkauf', 'name': 'Einkauf', 'type': 'expense', 'isCustom': 0},
+      {'id': 'expense_tanken', 'name': 'Tanken', 'type': 'expense', 'isCustom': 0},
+      {'id': 'expense_versicherung', 'name': 'Versicherung', 'type': 'expense', 'isCustom': 0},
+    ];
+    for (var cat in defaults) {
+      await db.insert('categories', cat, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+  }
+  Future<void> transferMoney({
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    required String description,
+  }) async {
+    final db = await database;
+    final date = DateTime.now().toIso8601String();
+    final transferId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    await db.transaction((txn) async {
+      // 1. Abgang vom Quellkonto
+      await txn.insert('transactions', {
+        'id': '${transferId}_out',
+        'accountId': fromAccountId,
+        'type': 'expense',
+        'category': 'Umbuchung',
+        'amount': amount,
+        'description': 'An: $description',
+        'date': date,
+      });
+
+      // 2. Eingang auf Zielkonto
+      await txn.insert('transactions', {
+        'id': '${transferId}_in',
+        'accountId': toAccountId,
+        'type': 'income',
+        'category': 'Umbuchung',
+        'amount': amount,
+        'description': 'Von: $description',
+        'date': date,
+      });
+    });
+  }
+  Future<void> close() async {
+    final db = await database;
+    db.close();
+  }
+} // Ende der Klasse DatabaseHelper
