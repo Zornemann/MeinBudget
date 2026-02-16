@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../models/transaction.dart';
+import '../services/export_service.dart'; // Import für den Export-Service
 import 'transactions_screen.dart';
 import 'account_management_screen.dart';
-import 'loan_management_screen.dart'; // Wichtig: Import für Kredite
+import 'loan_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,14 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadDashboardData();
-    // Startet das Tutorial nach dem ersten Frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _showOnboardingIfNeeded());
   }
 
   Future<void> _showOnboardingIfNeeded() async {
     final prefs = await SharedPreferences.getInstance();
     final bool showIntro = prefs.getBool('show_onboarding') ?? true;
-
     if (showIntro) {
       _showOnboardingDialog(prefs);
     }
@@ -134,7 +133,17 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('Finanz Cockpit', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true, elevation: 0, backgroundColor: Colors.transparent, foregroundColor: Colors.black,
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: () => ExportService.exportTransactionsToCSV(),
+            tooltip: 'CSV Export',
+          ),
+        ],
       ),
       body: _isLoading ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
         onRefresh: _loadDashboardData,
