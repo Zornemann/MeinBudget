@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/transaction.dart';
 import 'transactions_screen.dart';
+import 'account_management_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
     final transactions = await _dbHelper.getTransactions();
+    // Hinweis: Hier wird aktuell nur das 'default_main' Konto berechnet. 
+    // Später könntest du hier die Summe ALLER Konten laden.
     final balance = await _dbHelper.getAccountBalance('default_main');
 
     double income = 0;
@@ -77,13 +80,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 16),
                     _buildCategoryPieChart(),
                     const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.list),
-                      label: const Text('Transaktionen verwalten'),
-                      onPressed: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const TransactionsScreen()));
-                        _loadDashboardData();
-                      },
+                    
+                    // Button 1: Transaktionen
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.list),
+                        label: const Text('Transaktionen verwalten'),
+                        onPressed: () async {
+                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const TransactionsScreen()));
+                          _loadDashboardData();
+                        },
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Button 2: Konten
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.account_balance_wallet),
+                        label: const Text('Konten verwalten'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AccountManagementScreen()),
+                          );
+                          _loadDashboardData();
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -109,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainPieChart() {
-    if (_totalIncome == 0 && _totalExpense == 0) return const Text('Keine Daten');
+    if (_totalIncome == 0 && _totalExpense == 0) return const SizedBox(height: 100, child: Center(child: Text('Keine Daten')));
     return SizedBox(
       height: 200,
       child: PieChart(
@@ -124,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryPieChart() {
-    if (_categoryExpenses.isEmpty) return const Text('Keine Ausgaben');
+    if (_categoryExpenses.isEmpty) return const SizedBox(height: 100, child: Center(child: Text('Keine Ausgaben')));
     return SizedBox(
       height: 200,
       child: PieChart(
