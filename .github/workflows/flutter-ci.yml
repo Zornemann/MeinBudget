@@ -27,10 +27,12 @@ jobs:
           flutter-version: '3.19.0'
           channel: 'stable'
 
-      - name: Build APK (mit integriertem Fix)
+      - name: Build APK (Auto-Verzeichnis-Fix)
         run: |
-          # 1. In den Unterordner wechseln
-          cd MeinBudget
+          # 1. Finde den Ordner, in dem die pubspec.yaml liegt
+          PROJECT_DIR=$(find . -name "pubspec.yaml" -exec dirname {} \;)
+          echo "Wechsle in Projektverzeichnis: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
           
           # 2. Dependencies laden
           flutter pub get
