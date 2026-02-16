@@ -1,22 +1,8 @@
-name: Flutter CI
-
-on:
-  push:
-    branches:
-      - main
-      - copilot/fix-flutter-ci-build-errors
-  pull_request:
-    branches:
-      - main
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Dies stellt sicher, dass alle Schritte im richtigen Unterordner starten
-    defaults:
-      run:
-        working-directory: MeinBudget
-
+    # Entferne die Zeile 'defaults: run: working-directory: MeinBudget'
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -36,12 +22,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Fix gradlew line endings (Finaler Pfad Fix)
+      - name: Fix gradlew line endings
         run: |
           sudo apt-get install -y dos2unix
-          # Wir reparieren die Datei direkt im Unterordner
-          dos2unix android/gradlew
-          chmod +x android/gradlew
+          # Nutze find, um die Datei sicher zu treffen, egal wo sie liegt
+          find . -name "gradlew" -exec dos2unix {} +
+          find . -name "gradlew" -exec chmod +x {} +
 
       - name: Analyze project
         run: flutter analyze --no-fatal-infos
@@ -55,4 +41,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: MeinBudget/build/app/outputs/flutter-apk/app-release.apk
+          path: "**/build/app/outputs/flutter-apk/app-release.apk"
