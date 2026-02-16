@@ -37,8 +37,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Fix gradlew permissions and line endings
+        run: |
+          sed -i 's/\r$//' android/gradlew
+          chmod +x android/gradlew
+
       - name: Analyze project
         run: flutter analyze --no-fatal-infos
 
       - name: Build APK
         run: flutter build apk --release
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
