@@ -139,7 +139,14 @@ class DatabaseHelper {
     }
     return balance;
   }
-
+Future<void> deleteTransaction(String id) async {
+    final db = await database;
+    await db.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
   // --- KREDITE CRUD ---
   Future<void> insertLoan(Loan loan) async {
     final db = await database;

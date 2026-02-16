@@ -116,8 +116,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor:
-                  type == 'income' ? Colors.green : Colors.red,
+              backgroundColor: type == 'income' ? Colors.green : Colors.red,
               child: Icon(
                 type == 'income' ? Icons.arrow_downward : Icons.arrow_upward,
                 color: Colors.white,
@@ -171,8 +170,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Löschen', style: TextStyle(color: Colors.red)),
+            child: const Text('Löschen', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -186,10 +184,8 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     final categories = await _dbHelper.getCategories(type);
     final accounts = await _dbHelper.getAccounts();
 
-    String selectedAccountId =
-        accounts.isNotEmpty ? accounts[0]['id'] : 'default_main';
-    String? selectedCategory =
-        categories.isNotEmpty ? categories[0].name : null;
+    String selectedAccountId = accounts.isNotEmpty ? accounts[0]['id'] : 'default_main';
+    String? selectedCategory = categories.isNotEmpty ? categories[0].name : null;
 
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -220,8 +216,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                             child: Text(acc['name']),
                           ))
                       .toList(),
-                  onChanged: (value) =>
-                      setDialogState(() => selectedAccountId = value!),
+                  onChanged: (value) => setDialogState(() => selectedAccountId = value!),
                 ),
                 const SizedBox(height: 16),
                 if (!showNewCategoryField) ...[
@@ -252,30 +247,25 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                 ] else ...[
                   TextField(
                     controller: newCategoryController,
-                    decoration: InputDecoration(
-                      labelText: 'Neue Kategorie',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setDialogState(() {
-                            showNewCategoryField = false;
-                            newCategoryController.clear();
-                          });
-                        },
-                      ),
+                    decoration: const InputDecoration(
+                      labelText: 'Neue Kategorie Name',
+                      border: OutlineInputBorder(),
                     ),
+                  ),
+                  TextButton(
+                    onPressed: () => setDialogState(() => showNewCategoryField = false),
+                    child: const Text('Zurück zur Auswahl'),
                   ),
                 ],
                 const SizedBox(height: 16),
                 TextField(
                   controller: amountController,
+                  keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Betrag',
+                    suffixText: '€',
                     border: OutlineInputBorder(),
-                    prefixText: '€ ',
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -285,95 +275,43 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('Datum'),
-                  subtitle: Text(DateFormat('dd.MM.yyyy').format(selectedDate)),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedDate = picked);
-                    }
-                  },
-                ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => Navigator.pop(context),
               child: const Text('Abbrechen'),
             ),
             ElevatedButton(
               onPressed: () async {
-                final amount =
-                    double.tryParse(amountController.text.replaceAll(',', '.'));
-                if (amount == null || amount <= 0) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Bitte geben Sie einen gültigen Betrag ein'),
-                    ),
-                  );
-                  return;
-                }
+                final amount = double.tryParse(amountController.text) ?? 0.0;
+                final categoryName = showNewCategoryField ? newCategoryController.text : selectedCategory;
 
-                String categoryName;
-                if (showNewCategoryField) {
-                  categoryName = newCategoryController.text.trim();
-                  if (categoryName.isEmpty) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                            Text('Bitte geben Sie einen Kategorienamen ein'),
-                      ),
-                    );
-                    return;
+                if (categoryName != null && amount > 0) {
+                  if (showNewCategoryField) {
+                    await _dbHelper.insertCategory(Category(
+                      id: const Uuid().v4(),
+                      name: categoryName,
+                      type: type,
+                      isCustom: true,
+                    ));
                   }
-                  final newCategory = Category(
+
+                  final transaction = Transaction(
                     id: const Uuid().v4(),
-                    name: categoryName,
+                    accountId: selectedAccountId, // Pflichtparameter hinzugefügt
                     type: type,
-                    isCustom: true,
+                    category: categoryName,
+                    amount: amount,
+                    description: descriptionController.text,
+                    date: selectedDate,
                   );
-                  await _dbHelper.insertCategory(newCategory);
-                } else {
-                  categoryName = selectedCategory ?? '';
-                }
 
-                final transaction = Transaction(
-                  id: const Uuid().v4(),
-                  accountId: selectedAccountId,
-                  type: type,
-                  category: categoryName,
-                  amount: amount,
-                  description: descriptionController.text,
-                  date: selectedDate,
-                );
-
-                await _dbHelper.insertTransaction(transaction);
-                if (!mounted) return;
-                Navigator.pop(dialogContext);
-                _loadTransactions();
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        type == 'income'
-                            ? 'Einnahme hinzugefügt'
-                            : 'Ausgabe hinzugefügt',
-                      ),
-                    ),
-                  );
+                  await _dbHelper.insertTransaction(transaction);
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  _loadTransactions();
                 }
               },
               child: const Text('Speichern'),
