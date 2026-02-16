@@ -172,10 +172,26 @@ class DatabaseHelper {
     );
   }
 
+  // Prüft, ob ein Kredit diesen Monat bereits verbucht wurde
+  Future<bool> hasLoanBeenPaidThisMonth(String loanId) async {
+    final db = await database;
+    final now = DateTime.now();
+    // Erster Tag des aktuellen Monats als ISO String
+    final firstDayOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+
+    final List<Map<String, dynamic>> result = await db.query(
+      'transactions',
+      where: 'description LIKE ? AND date >= ?',
+      whereArgs: ['%ID: $loanId%', firstDayOfMonth],
+    );
+
+    return result.isNotEmpty;
+  }
+
   // --- KREDITE CRUD ---
   Future<void> insertLoan(Loan loan) async {
     final db = await database;
-    await db.insert('loans', loan.toMap());
+    await db.insert('loans', loan.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Loan>> getLoans() async {
