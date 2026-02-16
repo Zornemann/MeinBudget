@@ -29,6 +29,33 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     });
   }
 
+  // Sicherheitsabfrage vor dem Löschen
+  Future<void> _confirmDelete(Map<String, dynamic> acc) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konto löschen?'),
+        content: Text('Möchten Sie "${acc['name']}" wirklich löschen? Alle zugehörigen Transaktionen werden ebenfalls entfernt.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Abbrechen')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Löschen', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _dbHelper.deleteAccount(acc['id']);
+      _loadAccounts();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Konto erfolgreich gelöscht')),
+      );
+    }
+  }
+
   void _showAccountDialog({Map<String, dynamic>? existingAccount}) {
     final nameController = TextEditingController(text: existingAccount?['name'] ?? '');
     final balanceController = TextEditingController(
@@ -103,10 +130,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                       IconButton(icon: const Icon(Icons.edit), onPressed: () => _showAccountDialog(existingAccount: acc)),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          // Hinweis: Du müsstest im DatabaseHelper noch deleteAccount implementieren!
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Löschen-Funktion folgt')));
-                        },
+                        onPressed: () => _confirmDelete(acc),
                       ),
                     ],
                   ),
