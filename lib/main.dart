@@ -60,16 +60,3 @@ class MeinBudgetApp extends StatelessWidget {
     );
   }
 }
-Verwende Code mit Vorsicht.
-
-2. Den Commit absetzen
-Das ist der finale Schritt für dein Sicherheits-Feature:
-bash
-# 1. Alle Änderungen (main.dart) stagen
-git add .
-
-# 2. Den "Sicherheits-Commit" erstellen
-git commit -m "feat: enable biometric authentication on app startup"
-
-# 3. Hochladen
-git push origin feature/database-fixes
