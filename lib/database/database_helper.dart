@@ -105,12 +105,20 @@ class DatabaseHelper {
   // --- KONTEN CRUD ---
   Future<void> insertAccount(Map<String, dynamic> account) async {
     final db = await database;
-    await db.insert('accounts', account);
+    await db.insert('accounts', account, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getAccounts() async {
     final db = await database;
     return await db.query('accounts', orderBy: 'name ASC');
+  }
+
+  Future<void> deleteAccount(String accountId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('transactions', where: 'accountId = ?', whereArgs: [accountId]);
+      await txn.delete('accounts', where: 'id = ?', whereArgs: [accountId]);
+    });
   }
 
   // --- TRANSAKTIONEN CRUD ---
@@ -140,10 +148,50 @@ class DatabaseHelper {
     return balance;
   }
 
+  Future<double> getTotalBalance() async {
+    final db = await database;
+    final List<Map<String, dynamic>> accounts = await db.query('accounts');
+    double totalInitialBalance = 0;
+    for (var acc in accounts) {
+      totalInitialBalance += (acc['initialBalance'] as num).toDouble();
+    }
+    final transactions = await getTransactions();
+    double transactionSum = 0;
+    for (var t in transactions) {
+      transactionSum += (t.type == 'income' ? t.amount : -t.amount);
+    }
+    return totalInitialBalance + transactionSum;
+  }
+
+  Future<void> deleteTransaction(String id) async {
+    final db = await database;
+    await db.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Prüft, ob ein Kredit diesen Monat bereits verbucht wurde
+  Future<bool> hasLoanBeenPaidThisMonth(String loanId) async {
+    final db = await database;
+    final now = DateTime.now();
+    // Erster Tag des aktuellen Monats als ISO String
+    final firstDayOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+
+    final List<Map<String, dynamic>> result = await db.query(
+      'transactions',
+      where: 'description LIKE ? AND date >= ?',
+      whereArgs: ['%ID: $loanId%', firstDayOfMonth],
+    );
+
+    return result.isNotEmpty;
+  }
+
   // --- KREDITE CRUD ---
   Future<void> insertLoan(Loan loan) async {
     final db = await database;
-    await db.insert('loans', loan.toMap());
+    await db.insert('loans', loan.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Loan>> getLoans() async {

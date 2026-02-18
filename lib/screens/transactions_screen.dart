@@ -35,23 +35,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
   Future<void> _loadTransactions() async {
     setState(() => _isLoading = true);
-    
     final transactions = await _dbHelper.getTransactions();
-    
     setState(() {
-      _incomeTransactions = transactions
-          .where((t) => t.type == 'income')
-          .toList();
-      _expenseTransactions = transactions
-          .where((t) => t.type == 'expense')
-          .toList();
+      _incomeTransactions = transactions.where((t) => t.type == 'income').toList();
+      _expenseTransactions = transactions.where((t) => t.type == 'expense').toList();
       _isLoading = false;
     });
-  }
-
-  Future<void> _deleteTransaction(String id) async {
-    await _dbHelper.deleteTransaction(id);
-    _loadTransactions();
   }
 
   @override
@@ -77,9 +66,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddTransactionDialog(
-          _tabController.index == 0 ? 'income' : 'expense',
-        ),
+        onPressed: () => _showTransactionDialog(_tabController.index == 0 ? 'income' : 'expense'),
         child: const Icon(Icons.add),
       ),
     );
@@ -87,25 +74,10 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
   Widget _buildTransactionList(List<Transaction> transactions, String type) {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
+    final dateFormat = DateFormat('dd.MM.yyyy');
 
     if (transactions.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              type == 'income' ? Icons.account_balance_wallet : Icons.shopping_cart,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Keine ${type == 'income' ? 'Einnahmen' : 'Ausgaben'} vorhanden',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ],
-        ),
-      );
+      return const Center(child: Text('Keine Einträge vorhanden'));
     }
 
     return ListView.builder(
@@ -113,253 +85,151 @@ class _TransactionsScreenState extends State<TransactionsScreen>
       itemCount: transactions.length,
       itemBuilder: (context, index) {
         final transaction = transactions[index];
-        final dateFormat = DateFormat('dd.MM.yyyy');
-        
         return Card(
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: type == 'income' ? Colors.green : Colors.red,
-              child: Icon(
-                type == 'income' ? Icons.arrow_downward : Icons.arrow_upward,
-                color: Colors.white,
-              ),
+              child: Icon(type == 'income' ? Icons.add : Icons.remove, color: Colors.white),
             ),
             title: Text(transaction.category),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(transaction.description),
-                Text(
-                  dateFormat.format(transaction.date),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
+            subtitle: Text("${transaction.description}\n${dateFormat.format(transaction.date)}"),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  currencyFormat.format(transaction.amount),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: type == 'income' ? Colors.green : Colors.red,
-                  ),
+                Text(currencyFormat.format(transaction.amount), 
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue),
+                  onPressed: () => _showTransactionDialog(type, existing: transaction),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _showDeleteConfirmation(transaction.id),
+                  onPressed: () => _confirmDelete(transaction.id),
                 ),
               ],
             ),
-            isThreeLine: true,
           ),
         );
       },
     );
   }
 
-  Future<void> _showDeleteConfirmation(String id) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _confirmDelete(String id) async {
+    final bool? confirmed = await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Löschen bestätigen'),
-        content: const Text('Möchten Sie diese Transaktion wirklich löschen?'),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Löschen?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Löschen', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nein')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ja')),
         ],
       ),
     );
-
     if (confirmed == true) {
-      await _deleteTransaction(id);
+      await _dbHelper.deleteTransaction(id);
+      _loadTransactions();
     }
   }
 
-  Future<void> _showAddTransactionDialog(String type) async {
-    final categories = await _dbHelper.getCategories(type);
+  Future<void> _showTransactionDialog(String type, {Transaction? existing}) async {
+    List<Category> categories = await _dbHelper.getCategories(type);
+    final accounts = await _dbHelper.getAccounts();
+
+    String selectedAccountId = existing?.accountId ?? (accounts.isNotEmpty ? accounts[0]['id'] : 'default_main');
+    String? selectedCategory = existing?.category ?? (categories.isNotEmpty ? categories[0].name : null);
     
-    String? selectedCategory = categories.isNotEmpty ? categories[0].name : null;
-    final amountController = TextEditingController();
-    final descriptionController = TextEditingController();
-    DateTime selectedDate = DateTime.now();
-    bool showNewCategoryField = false;
-    final newCategoryController = TextEditingController();
+    final amountController = TextEditingController(text: existing?.amount.toString().replaceAll('.', ',') ?? '');
+    final descController = TextEditingController(text: existing?.description ?? '');
+    bool showNewCat = false;
+    final newCatController = TextEditingController();
 
     if (!mounted) return;
 
     await showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            type == 'income' ? 'Neue Einnahme' : 'Neue Ausgabe',
-          ),
+      builder: (context) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(existing == null ? 'Neu' : 'Editieren'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!showNewCategoryField) ...[
+                DropdownButtonFormField<String>(
+                  value: selectedAccountId,
+                  items: accounts.map<DropdownMenuItem<String>>((a) => 
+                    DropdownMenuItem(value: a['id'].toString(), child: Text(a['name'].toString()))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedAccountId = v!),
+                  decoration: const InputDecoration(labelText: 'Konto'),
+                ),
+                if (!showNewCat)
                   DropdownButtonFormField<String>(
                     value: selectedCategory,
-                    decoration: const InputDecoration(
-                      labelText: 'Kategorie',
-                      border: OutlineInputBorder(),
-                    ),
                     items: [
-                      ...categories.map((cat) => DropdownMenuItem(
-                            value: cat.name,
-                            child: Text(cat.name),
-                          )),
-                      const DropdownMenuItem(
-                        value: '__new__',
-                        child: Text('+ Neue Kategorie'),
-                      ),
+                      ...categories.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))),
+                      const DropdownMenuItem(value: 'new', child: Text('+ Neue Kategorie')),
                     ],
-                    onChanged: (value) {
-                      if (value == '__new__') {
-                        setDialogState(() => showNewCategoryField = true);
-                      } else {
-                        setDialogState(() => selectedCategory = value);
-                      }
+                    onChanged: (v) {
+                      if (v == 'new') setDialogState(() => showNewCat = true);
+                      else setDialogState(() => selectedCategory = v);
                     },
-                  ),
-                ] else ...[
-                  TextField(
-                    controller: newCategoryController,
-                    decoration: InputDecoration(
-                      labelText: 'Neue Kategorie',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setDialogState(() {
-                            showNewCategoryField = false;
-                            newCategoryController.clear();
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
+                    decoration: const InputDecoration(labelText: 'Kategorie'),
+                  )
+                else
+                  TextField(controller: newCatController, decoration: const InputDecoration(labelText: 'Kategorie Name')),
                 TextField(
                   controller: amountController,
-                  decoration: const InputDecoration(
-                    labelText: 'Betrag',
-                    border: OutlineInputBorder(),
-                    prefixText: '€ ',
-                  ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Betrag (€)'),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Beschreibung',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('Datum'),
-                  subtitle: Text(DateFormat('dd.MM.yyyy').format(selectedDate)),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedDate = picked);
-                    }
-                  },
-                ),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Beschreibung')),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Abbrechen'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Abbrechen')),
             ElevatedButton(
               onPressed: () async {
-                final amount = double.tryParse(
-                  amountController.text.replaceAll(',', '.'),
-                );
-                
-                if (amount == null || amount <= 0) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Bitte geben Sie einen gültigen Betrag ein'),
-                    ),
-                  );
+                final amountText = amountController.text.replaceAll(',', '.');
+                final amount = double.tryParse(amountText) ?? 0.0;
+
+                if (amount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ungültiger Betrag!')));
                   return;
                 }
 
-                String categoryName;
-                if (showNewCategoryField) {
-                  categoryName = newCategoryController.text.trim();
-                  if (categoryName.isEmpty) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Bitte geben Sie einen Kategorienamen ein'),
-                      ),
-                    );
-                    return;
-                  }
-                  // Neue Kategorie speichern
-                  final newCategory = Category(
-                    id: const Uuid().v4(),
-                    name: categoryName,
-                    type: type,
-                    isCustom: true,
-                  );
-                  await _dbHelper.insertCategory(newCategory);
+                String finalCategory;
+                if (showNewCat && newCatController.text.isNotEmpty) {
+                  finalCategory = newCatController.text;
+                  final nCat = Category(id: const Uuid().v4(), name: finalCategory, type: type, isCustom: true);
+                  await _dbHelper.insertCategory(nCat);
                 } else {
-                  categoryName = selectedCategory ?? '';
+                  finalCategory = selectedCategory ?? '';
                 }
 
-                final transaction = Transaction(
-                  id: const Uuid().v4(),
-                  type: type,
-                  category: categoryName,
-                  amount: amount,
-                  description: descriptionController.text,
-                  date: selectedDate,
-                );
+                if (finalCategory.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kategorie fehlt!')));
+                  return;
+                }
 
-                await _dbHelper.insertTransaction(transaction);
-                if (!mounted) return;
-                Navigator.pop(dialogContext);
-                _loadTransactions();
-                
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        type == 'income'
-                            ? 'Einnahme hinzugefügt'
-                            : 'Ausgabe hinzugefügt',
-                      ),
-                    ),
+                try {
+                  final t = Transaction(
+                    id: existing?.id ?? const Uuid().v4(),
+                    accountId: selectedAccountId,
+                    type: type,
+                    category: finalCategory,
+                    amount: amount,
+                    description: descController.text,
+                    date: existing?.date ?? DateTime.now(),
                   );
+                  await _dbHelper.insertTransaction(t);
+                  Navigator.pop(ctx);
+                  _loadTransactions();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: $e')));
                 }
               },
               child: const Text('Speichern'),
-            ),
+            )
           ],
         ),
       ),

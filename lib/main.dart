@@ -1,8 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'screens/home_screen.dart';
 
-void main() {
-  runApp(const MeinBudgetApp());
+void main() async {
+  // Wichtig: Initialisierung der Flutter-Bindings
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Biometrische Abfrage beim Start
+  final bool authenticated = await _authenticateAtStart();
+
+  if (authenticated) {
+    runApp(const MeinBudgetApp());
+  } else {
+    // Falls die Authentifizierung abgebrochen wurde, wird die App nicht gestartet
+    // oder zeigt einen Error-Screen.
+    runApp(const MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Zugriff verweigert. Bitte starte die App neu.')),
+      ),
+    ));
+  }
+}
+
+Future<bool> _authenticateAtStart() async {
+  final LocalAuthentication auth = LocalAuthentication();
+  
+  // Prüfen, ob das Gerät Biometrie unterstützt
+  final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+  final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+  if (!canAuthenticate) return true; // Falls das Gerät kein FaceID/Fingerabdruck hat
+
+  try {
+    return await auth.authenticate(
+      localizedReason: 'Bitte authentifiziere dich, um deine Finanzen zu sehen',
+      options: const AuthenticationOptions(
+        stickyAuth: true, // Verhindert Umgehen durch Task-Wechsel
+        biometricOnly: false, // Erlaubt PIN/Muster als Fallback
+      ),
+    );
+  } catch (e) {
+    return false;
+  }
 }
 
 class MeinBudgetApp extends StatelessWidget {
@@ -14,33 +53,9 @@ class MeinBudgetApp extends StatelessWidget {
       title: 'MeinBudget',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
-        // Helles Thema: Sauber und professionell
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B5E20), // Ein sattes "Geld-Grün"
-          primary: const Color(0xFF1B5E20),
-          surface: const Color(0xFFF8F9FA), // Ganz leichtes Grau/Weiß für den Hintergrund
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF8F9FA),
-          foregroundColor: Color(0xFF1B5E20),
-          elevation: 0,
-        ),
       ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        // Dunkles Thema: Modernes Anthrazit/Dunkelblau
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.dark,
-          seedColor: const Color(0xFF81C784),
-          surface: const Color(0xFF121212), // Tiefes Schwarz/Grau
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF121212),
-          elevation: 0,
-        ),
-      ),
-      themeMode: ThemeMode.system, 
       home: const HomeScreen(),
     );
   }
